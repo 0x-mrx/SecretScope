@@ -6,15 +6,15 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
     extra = {}
 
     if match.startswith("ghp_"):
-        extra["token_type"] = "Personal Access Token (PAT)"
+        extra["token_type"] = "Personal Access Token (PAT)"  # nosec B105
     elif match.startswith("ghs_"):
-        extra["token_type"] = "Server-to-Server Token"
+        extra["token_type"] = "Server-to-Server Token"  # nosec B105
         severity = "HIGH"
 
     masked = f"{match[:4]}{'*' * 20}{match[-4:]}"
 
     return {
-        "secret_type": "GITHUB_TOKEN",
+        "secret_type": "GITHUB_TOKEN",  # nosec B105
         "confidence": confidence,
         "severity": severity,
         "masked_value": masked,

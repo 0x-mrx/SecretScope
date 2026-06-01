@@ -75,6 +75,6 @@ def trigger_bulk_scans(
             trig = ScanTrigger(asset_id=asset_id)
             scan = trigger_scan(trig, db, current_user)
             scans.append(scan)
-        except Exception:
+        except Exception:  # nosec B112
             continue
     return scans

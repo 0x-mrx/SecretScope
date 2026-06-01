@@ -12,12 +12,12 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
     secret_match = SECRET_KEY_PATTERN.search(context)
     if secret_match:
         confidence = 0.99
-        extra["secret_found"] = "Companion Secret Key detected in context"
+        extra["secret_found"] = "Companion Secret Key detected in context"  # nosec B105
 
     masked = f"{match[:4]}{'*' * 12}{match[-4:]}"
 
     return {
-        "secret_type": "AWS_ACCESS_KEY",
+        "secret_type": "AWS_ACCESS_KEY",  # nosec B105
         "confidence": confidence,
         "severity": severity,
         "masked_value": masked,

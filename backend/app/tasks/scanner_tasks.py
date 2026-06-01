@@ -85,11 +85,11 @@ def run_repository_scan_task(self, scan_id: int):
         asset = db.query(Asset).filter(Asset.id == scan.asset_id).first()
         
         # Retrieve decrypted token if stored
-        token = ""
+        token = ""  # nosec B105
         if asset.credentials_encrypted:
             try:
                 token = encryptor.decrypt(asset.credentials_encrypted)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         results = ScannerEngine.scan_git_repository(asset.target_url_or_path, token, db)

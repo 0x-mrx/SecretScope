@@ -6,14 +6,14 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
     extra = {}
 
     if "proj-" in match:
-        extra["token_type"] = "OpenAI Project Key"
+        extra["token_type"] = "OpenAI Project Key"  # nosec B105
     else:
-        extra["token_type"] = "OpenAI Account Key"
+        extra["token_type"] = "OpenAI Account Key"  # nosec B105
 
     masked = f"{match[:7]}{'*' * 18}{match[-4:]}"
 
     return {
-        "secret_type": "OPENAI_KEY",
+        "secret_type": "OPENAI_KEY",  # nosec B105
         "confidence": confidence,
         "severity": severity,
         "masked_value": masked,

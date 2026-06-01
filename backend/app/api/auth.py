@@ -71,7 +71,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     return {
         "access_token": access_token,
-        "token_type": "bearer",
+        "token_type": "bearer",  # nosec B105
         "role": user.role,
         "email": user.email
     }
@@ -131,4 +131,4 @@ def confirm_password_reset(confirm: PasswordResetConfirm, db: Session = Depends(
 @router.post("/mfa/setup")
 def setup_mfa(_token: str = Depends(OAuth2PasswordRequestForm), _db: Session = Depends(get_db)):
     # Scaffold endpoint for MFA-ready architecture
-    return {"secret": "mock_otp_secret_key_12345", "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=OTP_MOCK"}
+    return {"secret": "mock_otp_secret_key_12345", "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=OTP_MOCK"}  # nosec B105

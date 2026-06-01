@@ -6,12 +6,12 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
     extra = {}
 
     if "hooks.slack.com" in match:
-        extra["token_type"] = "Slack Incoming Webhook URL"
+        extra["token_type"] = "Slack Incoming Webhook URL"  # nosec B105
         severity = "MEDIUM"
     elif match.startswith("xoxb-"):
-        extra["token_type"] = "Slack Bot Token"
+        extra["token_type"] = "Slack Bot Token"  # nosec B105
     elif match.startswith("xoxp-"):
-        extra["token_type"] = "Slack User Token"
+        extra["token_type"] = "Slack User Token"  # nosec B105
 
     # Masking
     if "services" in match:
@@ -22,7 +22,7 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
         masked = f"{match[:5]}{'*' * 15}{match[-4:]}"
 
     return {
-        "secret_type": "SLACK_TOKEN",
+        "secret_type": "SLACK_TOKEN",  # nosec B105
         "confidence": confidence,
         "severity": severity,
         "masked_value": masked,

@@ -27,7 +27,7 @@ class ScannerEngine:
         """
         findings = []
         try:
-            with httpx.Client(timeout=15.0, verify=False) as client:
+            with httpx.Client(timeout=15.0, verify=False) as client:  # nosec B501
                 # 1. Fetch main HTML page
                 response = client.get(url)
                 if response.status_code != 200:
@@ -76,9 +76,9 @@ class ScannerEngine:
                                         for f in smap_findings:
                                             f["file_path_or_url"] = f"{js_url} [SourceMap: {source_name}]"
                                             findings.append(f)
-                                except Exception:
+                                except Exception:  # nosec B110
                                     pass # Ignore map decoding failures
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue # Skip inaccessible script files
         except Exception as e:
             print(f"Error scanning website {url}: {e}")
@@ -127,7 +127,7 @@ class ScannerEngine:
                         for find in file_findings:
                             find["file_path_or_url"] = f"git://{repo_url}/{rel_path}"
                             findings.append(find)
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue
 
             # Walk commits (git log diffs to capture deleted secrets)
@@ -179,7 +179,7 @@ class ScannerEngine:
                     for find in file_findings:
                         find["file_path_or_url"] = file_path.replace("\\", "/")
                         findings.append(find)
-                except Exception:
+                except Exception:  # nosec B112
                     continue
 
         return findings

@@ -17,7 +17,7 @@ class RiskEngine:
 
         # 2. Compliance Risk
         # Sensitive credentials violate PCI-DSS, SOC2, HIPAA, ISO27001
-        if secret_type in ["AWS_ACCESS_KEY", "GITHUB_TOKEN", "SLACK_TOKEN"]:
+        if secret_type in ["AWS_ACCESS_KEY", "GITHUB_TOKEN", "SLACK_TOKEN"]:  # nosec B105
             compliance_risk = "CRITICAL"
         elif secret_type in ["GOOGLE_API_KEY", "OPENAI_KEY"]:
             compliance_risk = "HIGH"
@@ -26,11 +26,11 @@ class RiskEngine:
 
         # 3. Operational Risk
         # Operational impact of secret revocation or compromise
-        if secret_type == "AWS_ACCESS_KEY":
+        if secret_type == "AWS_ACCESS_KEY":  # nosec B105
             operational_risk = "CRITICAL"
-        elif secret_type in ["GITHUB_TOKEN", "OPENAI_KEY"]:
+        elif secret_type in ["GITHUB_TOKEN", "OPENAI_KEY"]:  # nosec B105
             operational_risk = "HIGH"
-        elif secret_type == "SLACK_TOKEN":
+        elif secret_type == "SLACK_TOKEN":  # nosec B105
             operational_risk = "MEDIUM"
         else:
             operational_risk = "LOW"

@@ -18,7 +18,7 @@ def classify_match(match: str, context: str) -> Dict[str, Any]:
     masked = f"AIzaSy{'' * 4}{'*' * 28}{match[-4:]}"
 
     return {
-        "secret_type": "GOOGLE_API_KEY",
+        "secret_type": "GOOGLE_API_KEY",  # nosec B105
         "confidence": confidence,
         "severity": severity,
         "masked_value": masked,
