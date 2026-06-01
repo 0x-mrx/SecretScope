@@ -1,0 +1,10 @@
+{
+  "name": "Slack Tokens Plugin",
+  "secret_type": "SLACK_TOKEN",
+  "default_severity": "HIGH",
+  "description": "Detects Slack Bot (xoxb-), User (xoxp-) tokens, and Slack Webhook URLs.",
+  "patterns": [
+    "xox[bp]-[0-9a-zA-Z-]{10,}",
+    "https://hooks\\.slack\\.com/services/T[A-Z0-9]{8}/B[A-Z0-9]{8}/[A-Za-z0-9]{24}"
+  ]
+}

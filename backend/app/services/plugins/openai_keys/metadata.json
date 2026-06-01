@@ -1,0 +1,10 @@
+{
+  "name": "OpenAI Keys Plugin",
+  "secret_type": "OPENAI_KEY",
+  "default_severity": "HIGH",
+  "description": "Detects OpenAI API Keys starting with sk- or sk-proj-.",
+  "patterns": [
+    "sk-[a-zA-Z0-9]{32,80}",
+    "sk-proj-[a-zA-Z0-9]{32,80}"
+  ]
+}

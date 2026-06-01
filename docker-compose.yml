@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secretscope-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-secretscope}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecretScopeSecurePassword123!}
+      POSTGRES_DB: ${POSTGRES_DB:-secretscope}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secretscope-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: secretscope-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secretscope-network
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-39-38Z
+    container_name: secretscope-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-secretscope_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-SecretScopeMinioSecurePassword123!}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secretscope-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secretscope-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://secretscope:SecretScopeSecurePassword123!@postgres:5432/secretscope
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-super-secret-jwt-signing-key-change-in-prod-1234!}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local} # local or minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=secretscope_admin
+      - MINIO_SECRET_KEY=SecretScopeMinioSecurePassword123!
+      - MINIO_SECURE=false
+      - MINIO_BUCKET_NAME=secretscope-reports
+      - LOCAL_STORAGE_DIR=/var/lib/secretscope/storage
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-uP2Nl6eE2K3jP-hE0k_g3rO_b5DqR9xK6eJ7Z1d3nK4=} # Fernet 32 url-safe base64 key
+    volumes:
+      - local_storage:/var/lib/secretscope/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secretscope-network
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secretscope-celery-worker
+    command: celery -A app.core.celery_app.celery worker --loglevel=info
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://secretscope:SecretScopeSecurePassword123!@postgres:5432/secretscope
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-super-secret-jwt-signing-key-change-in-prod-1234!}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=secretscope_admin
+      - MINIO_SECRET_KEY=SecretScopeMinioSecurePassword123!
+      - MINIO_SECURE=false
+      - MINIO_BUCKET_NAME=secretscope-reports
+      - LOCAL_STORAGE_DIR=/var/lib/secretscope/storage
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-uP2Nl6eE2K3jP-hE0k_g3rO_b5DqR9xK6eJ7Z1d3nK4=}
+    volumes:
+      - local_storage:/var/lib/secretscope/storage
+      - /var/run/docker.sock:/var/run/docker.sock # if nested checks needed
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - secretscope-network
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secretscope-celery-beat
+    command: celery -A app.core.celery_app.celery beat --loglevel=info
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://secretscope:SecretScopeSecurePassword123!@postgres:5432/secretscope
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-super-secret-jwt-signing-key-change-in-prod-1234!}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=secretscope_admin
+      - MINIO_SECRET_KEY=SecretScopeMinioSecurePassword123!
+      - MINIO_SECURE=false
+      - MINIO_BUCKET_NAME=secretscope-reports
+      - LOCAL_STORAGE_DIR=/var/lib/secretscope/storage
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-uP2Nl6eE2K3jP-hE0k_g3rO_b5DqR9xK6eJ7Z1d3nK4=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - secretscope-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: secretscope-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost/api/v1
+    networks:
+      - secretscope-network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: secretscope-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - webroot:/var/www/html
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - secretscope-network
+
+networks:
+  secretscope-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  local_storage:
+  certbot_etc:
+  certbot_var:
+  webroot:

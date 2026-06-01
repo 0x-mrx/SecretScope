@@ -1,0 +1,9 @@
+{
+  "name": "GitHub Tokens Plugin",
+  "secret_type": "GITHUB_TOKEN",
+  "default_severity": "CRITICAL",
+  "description": "Detects GitHub Personal Access Tokens (ghp_), OAuth tokens (gho_), and related keys.",
+  "patterns": [
+    "gh[pousr]_[A-Za-z0-9_]{36,255}"
+  ]
+}

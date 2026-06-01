@@ -1,0 +1,1 @@
+# SecretScope app package

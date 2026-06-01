@@ -1,0 +1,7 @@
+{
+  "name": "Custom Rules Plugin",
+  "secret_type": "CUSTOM_RULE",
+  "default_severity": "MEDIUM",
+  "description": "Applies user-defined regex rules loaded dynamically from the database.",
+  "patterns": []
+}

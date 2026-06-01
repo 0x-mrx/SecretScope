@@ -1,0 +1,9 @@
+{
+  "name": "AWS Keys Plugin",
+  "secret_type": "AWS_ACCESS_KEY",
+  "default_severity": "CRITICAL",
+  "description": "Detects AWS Access Key ID (AKIA) tokens.",
+  "patterns": [
+    "AKIA[0-9A-Z]{16}"
+  ]
+}

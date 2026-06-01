@@ -1,0 +1,1 @@
+# SecretScope schemas package
