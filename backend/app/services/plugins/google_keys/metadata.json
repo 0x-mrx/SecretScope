@@ -4,6 +4,6 @@
   "default_severity": "HIGH",
   "description": "Detects Google Cloud Platform and Firebase API keys.",
   "patterns": [
-    "AIzaSy[A-Za-z0-9-_]{35}"
+    "AIzaSy[A-Za-z0-9-_]{33,35}"
   ]
 }

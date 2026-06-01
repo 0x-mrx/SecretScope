@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 import io
 import csv
 import json
 
 from app.core.database import get_db
-from app.core.security import verify_role, Roles, get_current_user
+from app.core.security import verify_role, Roles
 from app.models.finding import Finding
 from app.models.secret_type import SecretType
 from app.models.secret import Secret
@@ -189,4 +189,3 @@ def export_audit_log(format: str = "json", db: Session = Depends(get_db)):
             media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename=secretscope_audit_export_{datetime.utcnow().strftime('%Y%m%d')}.json"}
         )
- Rama:

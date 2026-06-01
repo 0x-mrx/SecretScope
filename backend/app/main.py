@@ -64,7 +64,7 @@ def startup_event():
             },
             {
                 "name": "GOOGLE_API_KEY",
-                "pattern": "AIzaSy[A-Za-z0-9-_]{35}",
+                "pattern": "AIzaSy[A-Za-z0-9-_]{33,35}",
                 "description": "Google API and Cloud Platform keys",
                 "is_custom": False
             },

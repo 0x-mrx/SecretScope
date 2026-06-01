@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.core.database import get_db
-from app.core.security import get_password_hash, verify_password, create_access_token, Roles
+from app.core.security import get_password_hash, verify_password, create_access_token
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.schemas.auth import UserCreate, Token, UserResponse, PasswordResetRequest, PasswordResetConfirm
@@ -129,6 +129,6 @@ def confirm_password_reset(confirm: PasswordResetConfirm, db: Session = Depends(
     return {"message": "Password reset successfully"}
 
 @router.post("/mfa/setup")
-def setup_mfa(token: str = Depends(OAuth2PasswordRequestForm), db: Session = Depends(get_db)):
+def setup_mfa(_token: str = Depends(OAuth2PasswordRequestForm), _db: Session = Depends(get_db)):
     # Scaffold endpoint for MFA-ready architecture
     return {"secret": "mock_otp_secret_key_12345", "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=OTP_MOCK"}

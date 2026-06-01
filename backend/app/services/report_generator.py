@@ -1,20 +1,19 @@
 import os
-from typing import List, Dict, Any
+import tempfile
+from typing import List, Dict
 from jinja2 import Template
 from sqlalchemy.orm import Session
 from datetime import datetime
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from app.core.config import settings
 from app.services.storage_manager import storage_manager
 from app.models.finding import Finding
 from app.models.project import Project
 from app.models.report import Report
-from app.models.user import User
 
 # HTML Template
 HTML_REPORT_TEMPLATE = """
@@ -257,11 +256,6 @@ class ReportGenerator:
             raise Exception("Project not found")
 
         # Fetch findings for assets in this project
-        # Joint query
-        raw_findings = db.query(Finding).join(Finding.scan_id).filter(
-            Finding.scan_id.has(asset_id=project.id)
-        ).all()
-        # Wait, scan table has asset_id, asset table has project_id
         # Let's write the correct join query:
         from app.models.scan import Scan
         from app.models.asset import Asset

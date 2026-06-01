@@ -20,8 +20,8 @@ class CustomRulesDetector(BasePlugin):
 
         # Fetch custom rules
         custom_types = db.query(SecretType).filter(
-            SecretType.is_custom == True,
-            SecretType.is_active == True
+            SecretType.is_custom.is_(True),
+            SecretType.is_active.is_(True)
         ).all()
 
         lines = content.splitlines()

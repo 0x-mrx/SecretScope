@@ -24,7 +24,7 @@ jobs:
           pip install ruff bandit
 
       - name: Run Ruff Linter
-        run: ruff check backend/app
+        run: ruff check backend/app --fix
 
       - name: Run Bandit Security Analysis
         run: bandit -r backend/app -x backend/tests

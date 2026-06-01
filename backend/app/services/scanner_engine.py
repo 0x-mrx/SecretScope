@@ -12,7 +12,6 @@ from git import Repo
 
 from app.core.config import settings
 from app.services.plugins import scan_and_classify_content
-from app.services.risk_engine import RiskEngine
 
 # Regex to find script sources and inline scripts
 SCRIPT_SRC_PATTERN = re.compile(r'(?i)<script\s+[^>]*src=["\']([^"\']+)["\']')

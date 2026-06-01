@@ -2,13 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from app.core.database import get_db
 from app.core.security import verify_role, Roles
 from app.models.finding import Finding
 from app.models.asset import Asset
-from app.models.project import Project
 
 router = APIRouter()
 
@@ -41,7 +40,7 @@ def get_executive_dashboard(db: Session = Depends(get_db)) -> Dict[str, Any]:
     # Average time in hours between created_at and resolved_at for resolved findings
     remediated_findings = db.query(Finding).filter(
         Finding.status.in_(["REMEDIATED", "CLOSED"]),
-        Finding.resolved_at != None
+        Finding.resolved_at.isnot(None)
     ).all()
     
     mttr_hours = 0.0
@@ -74,7 +73,6 @@ def get_executive_dashboard(db: Session = Depends(get_db)) -> Dict[str, Any]:
     now = datetime.utcnow()
     for i in range(6, -1, -1):
         day = now - timedelta(days=i)
-        day_start = datetime(day.year, day.month, day.day, 0, 0, 0)
         day_end = datetime(day.year, day.month, day.day, 23, 59, 59)
         
         count = db.query(func.count(Finding.id)).filter(
