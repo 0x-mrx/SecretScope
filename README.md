@@ -1,4 +1,4 @@
-# SecretScope - Enterprise Secret Discovery & Compliance Platform
+# SecretScope
 
 SecretScope is a secure, production-grade DevSecOps platform designed to help organizations discover, inventory, monitor, classify, and remediate exposed credentials (like AWS keys, GCP keys, Slack tokens, Git tokens, etc.) across their web assets, repositories, files, and local directories.
 
