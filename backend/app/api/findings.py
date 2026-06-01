@@ -19,6 +19,8 @@ from app.models.asset import Asset
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.schemas.finding import FindingResponse, FindingUpdate, FindingSearchResponse
+from app.core.encryption import encryptor
+from app.services.key_validator import KeyValidator
 
 router = APIRouter()
 
@@ -189,3 +191,73 @@ def export_audit_log(format: str = "json", db: Session = Depends(get_db)):
             media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename=secretscope_audit_export_{datetime.utcnow().strftime('%Y%m%d')}.json"}
         )
+
+@router.get("/{id}/raw", dependencies=[Depends(verify_role([Roles.ADMIN, Roles.ANALYST]))])
+def get_raw_secret(id: int, db: Session = Depends(get_db), current_user: User = Depends(verify_role([Roles.ADMIN, Roles.ANALYST]))):
+    """
+    Decrypts and returns the raw exposed secret. Strictly audited.
+    """
+    secret = db.query(Secret).filter(Secret.finding_id == id).first()
+    if not secret:
+        raise HTTPException(status_code=404, detail="Secret not found for this finding")
+
+    raw_val = encryptor.decrypt(secret.encrypted_raw_value)
+    
+    # Log access in Audit Log
+    log = AuditLog(
+        user_id=current_user.id,
+        action="DECRYPT_SECRET",
+        details=f"User {current_user.email} decrypted raw value for Finding ID {id}."
+    )
+    db.add(log)
+    db.commit()
+
+    return {"id": id, "raw_value": raw_val}
+
+@router.post("/{id}/validate", dependencies=[Depends(verify_role([Roles.ADMIN, Roles.ANALYST]))])
+def validate_finding_secret(id: int, db: Session = Depends(get_db), current_user: User = Depends(verify_role([Roles.ADMIN, Roles.ANALYST]))):
+    """
+    Active live verification of the secret against the respective cloud/platform API.
+    """
+    finding = db.query(Finding).filter(Finding.id == id).first()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    secret = db.query(Secret).filter(Secret.finding_id == id).first()
+    if not secret:
+        raise HTTPException(status_code=404, detail="Secret not found for this finding")
+
+    secret_type = db.query(SecretType).filter(SecretType.id == finding.secret_type_id).first()
+    if not secret_type:
+        raise HTTPException(status_code=404, detail="Secret type not found")
+
+    raw_val = encryptor.decrypt(secret.encrypted_raw_value)
+    validation_result = KeyValidator.validate_secret(secret_type.name, raw_val)
+
+    # Automatically transition status or update notes based on result
+    if validation_result["status"] == "VALID":
+        finding.status = "CONFIRMED"
+        finding.remediation_notes = f"[BugHunter Validator]: Confirmed ACTIVE. {validation_result['details']}"
+    elif validation_result["status"] == "INVALID":
+        finding.status = "CLOSED"
+        finding.remediation_notes = f"[BugHunter Validator]: Confirmed INACTIVE/REVOKED. {validation_result['details']}"
+    else:
+        finding.remediation_notes = f"[BugHunter Validator]: Validation attempt resulted in status: {validation_result['status']}. Details: {validation_result['details']}"
+
+    db.commit()
+
+    # Log action
+    log = AuditLog(
+        user_id=current_user.id,
+        action="VALIDATE_SECRET",
+        details=f"User {current_user.email} triggered active validation for Finding ID {id}. Result: {validation_result['status']}"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "finding_id": id,
+        "secret_type": secret_type.name,
+        "validation": validation_result,
+        "new_status": finding.status
+    }

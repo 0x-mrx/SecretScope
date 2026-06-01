@@ -116,3 +116,26 @@ Each status transition requires a logged reason, updating the compliance audit l
 We provide automated cron-ready scripts in `backups/`:
 * Run `backups/backup_postgres.sh` to extract a daily compressed SQL database dump.
 * Run `backups/backup_minio.sh` to archive report attachments stored in object buckets.
+
+### 5. Bug Hunting & Security Research
+
+SecretScope includes specialized API features tailored for security researchers and bug hunters to retrieve raw secrets and verify live credential validity:
+
+* **Retrieve Raw Decrypted Secrets**:
+  Get the raw decrypted value of any discovered secret (audited access) to test manually:
+  ```http
+  GET /api/v1/findings/{id}/raw
+  ```
+  *(Requires Admin or Analyst roles. Generates an audited `DECRYPT_SECRET` action).*
+
+* **Active Key Validation**:
+  Test if the leaked token is live and operational against the target platform APIs:
+  ```http
+  POST /api/v1/findings/{id}/validate
+  ```
+  * **Google API Key**: Calls Google Maps Geocoding API to check key status.
+  * **GitHub Token**: Calls the `/user` endpoint to fetch username and associated token OAuth scopes.
+  * **Slack Token**: Calls `auth.test` Slack API to test bot/user authentication.
+  * **OpenAI Key**: Calls listing models API to check key validity.
+  
+  If the key is valid, the finding status transitions to `CONFIRMED` and outputs validation metadata. If it has been revoked or is invalid, the status transitions to `CLOSED`.
