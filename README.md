@@ -64,15 +64,26 @@ Ensure you have the following installed on your machine:
 * Docker Compose
 * git
 
-### 2. Startup
+### 2. Startup & Configuration
 
-To boot up all platform services:
+The easiest way to initialize the platform is by running the automated setup script. This script checks dependencies, prepares your `.env` environment variables file, generates secure cryptographic secret keys, and boots the container stack.
 
 ```bash
-docker compose up --build -d
+chmod +x setup.sh
+./setup.sh
 ```
 
-Docker Compose will build the React frontend and FastAPI backend containers, download database binaries, and launch Nginx.
+Alternatively, to configure and run the services manually:
+
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and fill in or customize security keys, database parameters, and storage paths.
+3. Build and launch all services:
+   ```bash
+   docker compose up --build -d
+   ```
 
 ### 3. Log In
 
