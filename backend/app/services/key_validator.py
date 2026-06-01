@@ -79,13 +79,13 @@ class KeyValidator:
 
     @classmethod
     def validate_secret(cls, secret_type: str, raw_val: str) -> Dict[str, Any]:
-        if secret_type == "GOOGLE_API_KEY":
+        if secret_type == "GOOGLE_API_KEY":  # nosec B105
             return cls.validate_google_key(raw_val)
-        elif secret_type == "GITHUB_TOKEN":
+        elif secret_type == "GITHUB_TOKEN":  # nosec B105
             return cls.validate_github_token(raw_val)
-        elif secret_type == "SLACK_TOKEN":
+        elif secret_type == "SLACK_TOKEN":  # nosec B105
             return cls.validate_slack_token(raw_val)
-        elif secret_type == "OPENAI_KEY":
+        elif secret_type == "OPENAI_KEY":  # nosec B105
             return cls.validate_openai_key(raw_val)
         else:
-            return {"status": "UNSUPPORTED", "details": f"Active validation is not supported yet for {secret_type}."}
+            return {"status": "UNSUPPORTED", "details": f"Active validation is not supported yet for {secret_type}."}  # nosec B105
