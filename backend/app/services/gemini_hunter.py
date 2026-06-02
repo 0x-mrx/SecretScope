@@ -4,6 +4,7 @@ import os
 import re
 import urllib.parse
 import httpx
+import json
 from typing import List, Dict, Any
 
 # Regex to detect Google API Keys
@@ -167,7 +168,7 @@ def main():
         
     elif args.mode == 2:
         if not args.file or not os.path.exists(args.file):
-            print(f"[!] Error: Valid --file is required for Mode 2")
+            print("[!] Error: Valid --file is required for Mode 2")
             sys.exit(1)
         with open(args.file, "r") as f:
             targets = f.read().splitlines()
@@ -176,7 +177,7 @@ def main():
 
     elif args.mode == 3:
         if not args.file or not os.path.exists(args.file):
-            print(f"[!] Error: Valid --file is required for Mode 3")
+            print("[!] Error: Valid --file is required for Mode 3")
             sys.exit(1)
         with open(args.file, "r") as f:
             js_links = f.read().splitlines()
