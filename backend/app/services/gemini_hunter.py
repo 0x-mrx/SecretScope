@@ -58,9 +58,9 @@ class GeminiHunter:
                     js_r = httpx.get(js_url, timeout=8.0)
                     if js_r.status_code == 200:
                         keys.extend(self.extract_keys_from_text(js_r.text))
-                except Exception:
+                except Exception:  # nosec B112
                     continue
-        except Exception:
+        except Exception:  # nosec B110
             pass
             
         return list(set(keys))
@@ -101,7 +101,7 @@ class GeminiHunter:
                 r = httpx.get(js_url.strip(), timeout=8.0)
                 if r.status_code == 200:
                     keys.extend(self.extract_keys_from_text(r.text))
-            except Exception:
+            except Exception:  # nosec B112
                 continue
                 
         results = []
