@@ -232,17 +232,34 @@ def validate_finding_secret(id: int, db: Session = Depends(get_db), current_user
         raise HTTPException(status_code=404, detail="Secret type not found")
 
     raw_val = encryptor.decrypt(secret.encrypted_raw_value)
-    validation_result = KeyValidator.validate_secret(secret_type.name, raw_val)
-
-    # Automatically transition status or update notes based on result
-    if validation_result["status"] == "VALID":
-        finding.status = "CONFIRMED"
-        finding.remediation_notes = f"[BugHunter Validator]: Confirmed ACTIVE. {validation_result['details']}"
-    elif validation_result["status"] == "INVALID":
-        finding.status = "CLOSED"
-        finding.remediation_notes = f"[BugHunter Validator]: Confirmed INACTIVE/REVOKED. {validation_result['details']}"
+    
+    # If it is a Google/Gemini key, run advanced Mode 5 scanner
+    if secret_type.name == "GOOGLE_API_KEY":  # nosec B105
+        from app.services.gemini_exploit import GeminiExploiter
+        exploit_data = GeminiExploiter.scan_all_capabilities(raw_val)
+        summary = exploit_data.get("summary", {})
+        active_caps = summary.get("active_capabilities", [])
+        poc_cost = summary.get("estimated_poc_cost", 0.0)
+        
+        if len(active_caps) > 0:
+            finding.status = "CONFIRMED"
+            finding.severity = "CRITICAL" if any(c in active_caps for c in ["image_gen", "tts_gen"]) else "HIGH"
+            finding.remediation_notes = f"[Gemini Exploit Center]: Exposed key is ACTIVE. Enabled scopes: {', '.join(active_caps)}. PoC run cost estimation: ${poc_cost}. Referer Bypass: {summary.get('referer_used') or 'None'}"
+            validation_result = {"status": "VALID", "details": finding.remediation_notes, "metadata": exploit_data}
+        else:
+            finding.status = "CLOSED"
+            finding.remediation_notes = "[Gemini Exploit Center]: Validated key has NO active Gemini generative model or file capabilities enabled."
+            validation_result = {"status": "INVALID", "details": finding.remediation_notes, "metadata": exploit_data}
     else:
-        finding.remediation_notes = f"[BugHunter Validator]: Validation attempt resulted in status: {validation_result['status']}. Details: {validation_result['details']}"
+        validation_result = KeyValidator.validate_secret(secret_type.name, raw_val)
+        if validation_result["status"] == "VALID":
+            finding.status = "CONFIRMED"
+            finding.remediation_notes = f"[BugHunter Validator]: Confirmed ACTIVE. {validation_result['details']}"
+        elif validation_result["status"] == "INVALID":
+            finding.status = "CLOSED"
+            finding.remediation_notes = f"[BugHunter Validator]: Confirmed INACTIVE/REVOKED. {validation_result['details']}"
+        else:
+            finding.remediation_notes = f"[BugHunter Validator]: Validation attempt resulted in status: {validation_result['status']}. Details: {validation_result['details']}"
 
     db.commit()
 

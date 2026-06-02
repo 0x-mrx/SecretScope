@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { findingService, projectService } from '../services/api';
 import { Finding, Project } from '../types';
-import { Bug, Search, Eye, AlertCircle, X, ShieldCheck, UserCheck } from 'lucide-react';
+import { Bug, Search, Eye, AlertCircle, X, ShieldCheck, UserCheck, Play } from 'lucide-react';
 
 export const Findings: React.FC = () => {
   const [findings, setFindings] = useState<Finding[]>([]);
@@ -22,6 +22,8 @@ export const Findings: React.FC = () => {
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [remediationStatus, setRemediationStatus] = useState('');
   const [notes, setNotes] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationData, setValidationData] = useState<any>(null);
 
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +68,7 @@ export const Findings: React.FC = () => {
     setSelectedFinding(finding);
     setRemediationStatus(finding.status);
     setNotes(finding.remediation_notes || '');
+    setValidationData(null);
   };
 
   const handleUpdateRemediation = async (e: React.FormEvent) => {
@@ -83,6 +86,23 @@ export const Findings: React.FC = () => {
       fetchFindings();
     } catch (err) {
       alert("Failed to update remediation status");
+    }
+  };
+
+  const handleActiveValidation = async () => {
+    if (!selectedFinding) return;
+    setIsValidating(true);
+    try {
+      const res = await findingService.validate(selectedFinding.id);
+      setValidationData(res.validation.metadata || res.validation);
+      if (res.validation.details) {
+        setNotes(res.validation.details);
+      }
+      fetchFindings();
+    } catch (err) {
+      alert("Validation failed or returned error");
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -278,6 +298,77 @@ export const Findings: React.FC = () => {
                 <pre className="bg-gray-950 p-4 rounded-xl border border-cyber-border text-xs text-indigo-300 font-mono overflow-x-auto whitespace-pre leading-relaxed">
                   <code>{selectedFinding.evidence_snippet}</code>
                 </pre>
+              </div>
+            )}
+
+            {/* Gemini Exploit Center UI */}
+            {selectedFinding.secret_type_name === 'GOOGLE_API_KEY' && (
+              <div className="border-t border-cyber-border pt-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-red-400 font-mono mb-4 flex items-center gap-2">
+                  <Play className="w-4 h-4 text-red-500 animate-pulse" />
+                  Gemini Exploit Center (Mode 5)
+                </h4>
+                
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={handleActiveValidation}
+                    disabled={isValidating}
+                    className="w-full bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 font-mono py-2 rounded-xl text-xs transition disabled:opacity-50"
+                  >
+                    {isValidating ? 'Executing Exploit Scopes...' : 'Trigger Capability Scan & PoC Uploads'}
+                  </button>
+
+                  {validationData && (
+                    <div className="bg-gray-950 p-4 rounded-xl border border-cyber-border space-y-3 text-xs font-mono">
+                      <div className="border-b border-cyber-border pb-2">
+                        <span className="text-cyber-muted">Active Endpoints:</span>
+                        <span className="block text-emerald-400 font-semibold mt-1">
+                          {validationData.summary?.active_capabilities?.join(', ') || 'None'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-cyber-muted">Referer Bypass:</span>
+                        <span className="block text-white mt-1">
+                          {validationData.summary?.referer_used || 'None (Direct Success)'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 border-t border-cyber-border pt-2">
+                        <div>
+                          <span className="text-cyber-muted">PoC Run Cost:</span>
+                          <span className="block text-rose-400 font-semibold mt-1">${validationData.summary?.estimated_poc_cost || '0.00'}</span>
+                        </div>
+                        <div>
+                          <span className="text-cyber-muted">Est. Abuse / 100k requests:</span>
+                          <span className="block text-rose-500 font-semibold mt-1">${validationData.summary?.estimated_abuse_per_100k || '0.00'}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Copyable Markdown Bounty Template */}
+                      <div className="border-t border-cyber-border pt-3">
+                        <span className="text-cyber-muted block mb-2">Markdown Bug Bounty Draft:</span>
+                        <textarea
+                          readOnly
+                          rows={5}
+                          className="w-full bg-gray-900 border border-cyber-border p-2 rounded-lg text-[10px] text-indigo-300 font-mono focus:outline-none"
+                          value={`### Exposed Gemini API Key - Live Capability & Financial Risk
+
+**Vulnerability Location**: ${selectedFinding.file_path_or_url}
+**API Key**: \`${selectedFinding.masked_value}\`
+
+#### Active Exploited Capabilities
+${validationData.summary?.active_capabilities?.map((c: string) => `- **${c}**: Validated live and active.`).join('\n') || '- No active capabilities verified.'}
+
+#### Financial Abuse Impact Estimation
+* **Estimated PoC Cost**: $${validationData.summary?.estimated_poc_cost || '0.00'}
+* **Estimated Attack Scale Cost (100,000 requests)**: $${validationData.summary?.estimated_abuse_per_100k || '0.00'}
+
+*The key was verified using Referer Spoofing: ${validationData.summary?.referer_used || 'None Required'}.*`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

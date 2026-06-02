@@ -1,26 +1,31 @@
-# 🛡️ SecretScope - Enterprise Secret Discovery & Compliance Platform
+# 🛡️ SecretScope - Gemini API Key Hunter & Exploiter Platform
 
-SecretScope is a secure, production-grade DevSecOps and offensive/defensive security platform designed to discover, inventory, monitor, classify, and validate exposed secrets (such as AWS keys, Google API keys, Slack tokens, Git tokens, and OpenAI credentials) across public web assets, code repositories, files, and local directories.
+SecretScope is a secure, production-grade security research and offensive/defensive auditing platform designed to discover, inventory, validate, bypass, and exploit exposed **Google / Gemini API keys** across public websites, Git repositories, local directories, or lists of pre-collected JavaScript URLs.
 
-The platform is engineered for **Security Engineers, DevSecOps Teams, and Bug Hunters** to identify credential exposure, verify key viability, ensure compliance regulations (SOC2, PCI-DSS, HIPAA), and manage the full remediation lifecycle.
+The platform is engineered for **Security Researchers, Bug Hunters, and DevSecOps Teams** to automate the detection and validation of Gemini API keys, test active permissions safely (including file access, corpora bypasses, and generation endpoints), and calculate real-world financial impacts.
 
 ---
 
 ## 🚀 Key Features
 
-*   🔍 **Multi-Source Scanners**: 
-    *   **Websites**: Crawl public assets, extract inline scripts, walk JS bundles, and parse exposed `.js.map` source maps.
-    *   **Git Repositories**: Walk full commit logs, branches, authors, and historical diffs using shallow clone git walks.
-    *   **Local Directories**: Traverse file hierarchies scanning files like `.env`, config files, `.json`, `.yaml`, `.xml`, etc.
-*   🔌 **Plugin-Based Architecture**: Modular detectors and classifiers for AWS, Google Cloud, GitHub, Slack, OpenAI, and more.
-*   ✅ **Active Key Validation**: Live HTTP validation checks to determine if a credential is active and output its permissions/scopes.
-*   ⚙️ **Dynamic Custom Signatures**: Inject custom regex patterns on the fly via the database or API.
-*   ⚖️ **Risk Engine**: Multi-dimensional risk score based on **Exposure Risk** (public vs. internal), **Compliance Risk** (threat to SOC2/PCI-DSS), and **Operational Risk** (write vs. read access).
-*   🔒 **Enterprise Security**: 
-    *   JWT Authentication & Role-Based Access Control (Admin, Analyst, Auditor).
-    *   Fernet AES symmetric encryption for secrets at rest.
+*   🔍 **5 Specialized Scanner Modes**:
+    *   **Mode 1 (Single Domain)**: Scrapes a website, extracts API keys, and validates access.
+    *   **Mode 2 (Batch Domains)**: Scans a list of domains in parallel from a `.txt` file or via frontend upload.
+    *   **Mode 3 (JS List)**: Scans pre-collected lists of JavaScript files directly.
+    *   **Mode 4 (Raw Key Validator)**: Direct verification of raw Google API keys including referer spoofing checks.
+    *   **Mode 5 (Capability Evidence Scanner)**: Safe execution of exploitation tests (Generative AI capability verification, Files API, Corpora bypass).
+*   ⚡ **Dynamic Exploit Verification (PoC Tests)**:
+    *   **Generative Models**: Validates Text, Image, Video, and Text-to-Speech (TTS) endpoints.
+    *   **Referer Bypass**: Tests if key restrictions can be spoofed using a custom `Referer` header.
+    *   **Files / Corpora Bypass**: Verifies if file upload boundaries or project creation bypass restrictions are active.
+*   💰 **Financial Impact Estimator**:
+    *   Estimates potential overbilling costs per 1,000 requests using official Gemini pricing schedules (Text input/output, Imagen 4.0, Veo 3.0, and TTS modalities).
+*   📝 **Bug Bounty Report Exporter**:
+    *   Generates and lets you copy pre-formatted, detailed markdown bug bounty draft reports containing extracted evidence and calculated financial impact.
+*   🔒 **Enterprise Foundation**:
+    *   JWT-based authentication and role-based access control (Admin, Analyst, Auditor).
+    *   AES-256 Fernet encryption for secrets stored at rest.
     *   Immutable database Audit Logs tracking every administrative and decryption action.
-    *   Rate limiting on public endpoints.
 
 ---
 
@@ -160,24 +165,25 @@ If you are modifying code, debugging, or running without Docker:
 
 ---
 
-## 🎯 Bug Hunting & Security Research Features
+## 🎯 Specialized Gemini Exploit & Verification Center
 
-SecretScope includes specialized API capabilities designed specifically for security researchers to retrieve raw credentials and verify active exposures:
+SecretScope provides an interactive "Gemini Exploit Center" directly integrated into the dashboard's findings drawer to test exposed key scopes:
 
-### 1. Decrypt & View Raw Secret (`GET /api/v1/findings/{id}/raw`)
-Raw credentials are encrypted at rest using base64 Fernet. Authorized users can decrypt the raw key to manually check and test the finding:
-*   **Access**: Restricted to `ADMIN` and `ANALYST` roles.
-*   **Auditability**: Every decryption event is logged in the database audit log with user details and timestamps.
+### 1. Active Capability Validation
+Instantly checks the live viability of the leaked credential against Google APIs:
+*   **Referer Bypass Check**: Automatically sends validation requests with and without `Referer: https://www.google.com/` to check for host restrictions.
+*   **File API Probe**: Echoes a dummy payload to the Google File API, verifies if it can be listed, and deletes it immediately to guarantee safe scanning.
+*   **Corpora Project Bypass**: Checks if a developer project can be created to bypass files upload restrictions.
 
-### 2. Active Validation (`POST /api/v1/findings/{id}/validate`)
-Instantly checks the live viability of the leaked credential against target platform APIs:
-*   **Google API Key**: Queries Google Maps Geocoding API to test key status.
-*   **GitHub Token**: Queries the GitHub `/user` endpoint to verify the token and parse its OAuth scopes.
-*   **Slack Token**: Queries `auth.test` Slack API to test bot/user authentication, team name, and user ID.
-*   **OpenAI Key**: Queries the OpenAI `/v1/models` endpoint to test model enumeration access.
-*   **Result Transitions**: 
-    *   If active $\rightarrow$ transition status to `CONFIRMED` and record scopes in remediation notes.
-    *   If inactive/revoked $\rightarrow$ transition status to `CLOSED` and mark as inactive.
+### 2. Generative Content Verification
+Triggers real-time test queries on the models allowed by the API key:
+*   **Text**: Prompts `gemini-2.5-flash` to verify text output generation.
+*   **Image**: Prompts `imagen-4.0-generate-001` to test automated picture creation.
+*   **Video**: Prompts `veo-3.0-fast-generate-001` to check video generation (using async task polling).
+*   **TTS (Audio)**: Queries the TTS preview model to synthesize speech from text.
+
+### 3. Financial Quota Abuse Estimator
+Automatically parses model capabilities and computes the maximum financial abuse capability (estimated dollar cost per 1,000 requests and general exposure rating).
 
 ---
 
@@ -210,6 +216,8 @@ VALUES (
 | **GET** | `/api/v1/findings` | List and search findings with full-text search filters | All |
 | **GET** | `/api/v1/findings/{id}/raw` | Decrypt and retrieve raw secret value | Admin, Analyst |
 | **POST** | `/api/v1/findings/{id}/validate` | Perform live active HTTP verification checks | Admin, Analyst |
+| **POST** | `/api/v1/scans/gemini/scan` | Trigger a targeted Gemini scanner task | Admin, Analyst |
+| **POST** | `/api/v1/scans/gemini/exploit` | Trigger real-time capability exploitation check on a key | Admin, Analyst |
 | **POST** | `/api/v1/reports` | Generate PDF, HTML, or MD compliance report | Admin, Analyst |
 
 ---

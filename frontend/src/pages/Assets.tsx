@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { assetService, projectService, scanService } from '../services/api';
 import { Asset, Project } from '../types';
-import { Shield, Plus, Calendar, Play, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, Calendar, Play, CheckCircle, RefreshCw, UploadCloud, FileText, Trash2 } from 'lucide-react';
 
 export const Assets: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -18,6 +18,14 @@ export const Assets: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [triggeringIds, setTriggeringIds] = useState<number[]>([]);
   const [msg, setMsg] = useState('');
+
+  // Batch import state variables
+  const [importMode, setImportMode] = useState<'single' | 'batch'>('single');
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchTargets, setBatchTargets] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [batchRegistering, setBatchRegistering] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   const fetchDependencies = async () => {
     setLoading(true);
@@ -38,23 +46,76 @@ export const Assets: React.FC = () => {
     fetchDependencies();
   }, [selectedProject]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  };
+
+  const processFile = (file: File) => {
+    setBatchFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+        setBatchTargets(lines);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectId || !target.trim()) return;
+    if (!projectId) return;
 
     try {
-      await assetService.create({
-        project_id: Number(projectId),
-        type,
-        target_url_or_path: target,
-        credentials: credentials || undefined,
-        schedule_cron: schedule === 'None' ? undefined : schedule
-      });
-      setIsModalOpen(false);
-      setTarget('');
-      setCredentials('');
-      setSchedule('None');
-      fetchDependencies();
+      if (importMode === 'single') {
+        if (!target.trim()) return;
+        await assetService.create({
+          project_id: Number(projectId),
+          type,
+          target_url_or_path: target,
+          credentials: credentials || undefined,
+          schedule_cron: schedule === 'None' ? undefined : schedule
+        });
+        setIsModalOpen(false);
+        setTarget('');
+        setCredentials('');
+        setSchedule('None');
+        fetchDependencies();
+      } else {
+        if (batchTargets.length === 0) {
+          alert("Please upload a file containing at least one valid target.");
+          return;
+        }
+        setBatchRegistering(true);
+        let successCount = 0;
+        let failCount = 0;
+        for (let i = 0; i < batchTargets.length; i++) {
+          setBatchProgress({ current: i + 1, total: batchTargets.length });
+          try {
+            await assetService.create({
+              project_id: Number(projectId),
+              type,
+              target_url_or_path: batchTargets[i],
+              credentials: credentials || undefined,
+              schedule_cron: schedule === 'None' ? undefined : schedule
+            });
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to register ${batchTargets[i]}:`, err);
+            failCount++;
+          }
+        }
+        setBatchRegistering(false);
+        setIsModalOpen(false);
+        setBatchFile(null);
+        setBatchTargets([]);
+        setSchedule('None');
+        fetchDependencies();
+        setMsg(`Batch registration completed! Successfully registered: ${successCount}. Failed: ${failCount}.`);
+      }
     } catch (err) {
       alert("Failed to register scanning target asset");
     }
@@ -128,7 +189,11 @@ export const Assets: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {assets.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="text-center font-mono py-12 text-cyber-muted">Loading scan targets...</td>
+              </tr>
+            ) : assets.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center font-mono py-12 text-cyber-muted">No scan targets matching filter scope.</td>
               </tr>
@@ -183,14 +248,39 @@ export const Assets: React.FC = () => {
           <div className="bg-cyber-card border border-cyber-border rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <h3 className="text-lg font-bold text-white mb-4">Register Scan Target Asset</h3>
 
+            {/* Tabs for Single vs Batch */}
+            <div className="flex border-b border-cyber-border mb-4">
+              <button
+                type="button"
+                disabled={batchRegistering}
+                onClick={() => setImportMode('single')}
+                className={`flex-1 pb-2 font-mono text-xs uppercase tracking-wider font-bold border-b-2 transition ${
+                  importMode === 'single' ? 'border-indigo-500 text-white' : 'border-transparent text-cyber-muted hover:text-white'
+                }`}
+              >
+                Single Target
+              </button>
+              <button
+                type="button"
+                disabled={batchRegistering}
+                onClick={() => setImportMode('batch')}
+                className={`flex-1 pb-2 font-mono text-xs uppercase tracking-wider font-bold border-b-2 transition ${
+                  importMode === 'batch' ? 'border-indigo-500 text-white' : 'border-transparent text-cyber-muted hover:text-white'
+                }`}
+              >
+                Batch Import (.txt)
+              </button>
+            </div>
+
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Scope Project</label>
                 <select
                   required
+                  disabled={batchRegistering}
                   value={projectId}
                   onChange={(e) => setProjectId(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition"
+                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition disabled:opacity-50"
                 >
                   <option value="">Select Target Project...</option>
                   {projects.map((p) => (
@@ -202,9 +292,10 @@ export const Assets: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Asset Target Type</label>
                 <select
+                  disabled={batchRegistering}
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition"
+                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition disabled:opacity-50"
                 >
                   <option value="WEBSITE">Website (Web Application / HTML / JS / Source Maps)</option>
                   <option value="REPOSITORY">Git Repository (Github / Gitlab URL)</option>
@@ -212,27 +303,82 @@ export const Assets: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Target Address / Path</label>
-                <input
-                  type="text"
-                  required
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  placeholder={type === 'WEBSITE' ? 'https://example.com' : type === 'REPOSITORY' ? 'https://github.com/org/repo.git' : '/absolute/path/to/project'}
-                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm font-mono outline-none transition"
-                />
-              </div>
+              {importMode === 'single' ? (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Target Address / Path</label>
+                  <input
+                    type="text"
+                    required
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    placeholder={type === 'WEBSITE' ? 'https://example.com' : type === 'REPOSITORY' ? 'https://github.com/org/repo.git' : '/absolute/path/to/project'}
+                    className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm font-mono outline-none transition"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Upload Target List (.txt)</label>
+                  {batchFile ? (
+                    <div className="bg-gray-950 border border-cyber-border rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-8 h-8 text-indigo-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-white truncate max-w-[200px]">{batchFile.name}</p>
+                          <p className="text-xs text-cyber-muted font-mono">{batchTargets.length} targets loaded</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={batchRegistering}
+                        onClick={() => { setBatchFile(null); setBatchTargets([]); }}
+                        className="p-1 hover:bg-gray-800 text-cyber-muted hover:text-rose-400 rounded-lg transition disabled:opacity-50"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                      onDragLeave={() => setIsDragOver(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragOver(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          processFile(file);
+                        }
+                      }}
+                      className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
+                        isDragOver ? 'border-indigo-500 bg-indigo-500/10' : 'border-cyber-border bg-gray-950/40 hover:border-cyber-muted'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept=".txt"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="batch-file-input"
+                      />
+                      <label htmlFor="batch-file-input" className="cursor-pointer space-y-2 block">
+                        <UploadCloud className="w-10 h-10 text-cyber-muted mx-auto" />
+                        <div className="text-sm text-white font-semibold">Drag & drop your .txt target file here</div>
+                        <div className="text-xs text-cyber-muted">Or click to browse (one target per line)</div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {type === 'REPOSITORY' && (
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Credentials Secret Token (Optional)</label>
                   <input
                     type="password"
+                    disabled={batchRegistering}
                     value={credentials}
                     onChange={(e) => setCredentials(e.target.value)}
                     placeholder="OAuth token or SSH passphrase (encrypted at rest)"
-                    className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition"
+                    className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition disabled:opacity-50"
                   />
                 </div>
               )}
@@ -240,9 +386,10 @@ export const Assets: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-cyber-muted font-mono mb-2">Schedules Frequency</label>
                 <select
+                  disabled={batchRegistering}
                   value={schedule}
                   onChange={(e) => setSchedule(e.target.value)}
-                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition"
+                  className="w-full bg-gray-950 border border-cyber-border focus:border-indigo-500 rounded-xl py-2.5 px-4 text-white text-sm outline-none transition disabled:opacity-50"
                 >
                   <option value="None">Manual Scan only</option>
                   <option value="hourly">Run scan Hourly</option>
@@ -254,16 +401,25 @@ export const Assets: React.FC = () => {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={batchRegistering}
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 border border-cyber-border hover:bg-gray-800 text-cyber-text font-semibold py-2.5 rounded-xl text-sm transition"
+                  className="flex-1 border border-cyber-border hover:bg-gray-800 text-cyber-text font-semibold py-2.5 rounded-xl text-sm transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-sm transition"
+                  disabled={batchRegistering || (importMode === 'batch' && batchTargets.length === 0)}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Register target
+                  {batchRegistering ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      {batchProgress.current}/{batchProgress.total} Registered
+                    </>
+                  ) : (
+                    importMode === 'single' ? 'Register target' : 'Register targets'
+                  )}
                 </button>
               </div>
             </form>

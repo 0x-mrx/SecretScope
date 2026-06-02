@@ -110,6 +110,10 @@ export const findingService = {
       responseType: 'blob'
     });
     return response.data;
+  },
+  validate: async (id: number) => {
+    const response = await api.post(`/findings/${id}/validate`);
+    return response.data;
   }
 };
 

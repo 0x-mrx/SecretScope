@@ -64,7 +64,7 @@ def startup_event():
             },
             {
                 "name": "GOOGLE_API_KEY",
-                "pattern": "AIzaSy[A-Za-z0-9-_]{33,35}",
+                "pattern": "AIzaSy[A-Za-z0-9-_]{33,45}",
                 "description": "Google API and Cloud Platform keys",
                 "is_custom": False
             },
@@ -98,6 +98,9 @@ def startup_event():
                     is_custom=rule["is_custom"]
                 )
                 db.add(st)
+            elif existing.pattern == "AIzaSy[A-Za-z0-9-_]{33,35}":
+                existing.pattern = rule["pattern"]
+                db.add(existing)
         db.commit()
 
         # 3. Create a Default Admin User if database is empty
