@@ -87,7 +87,7 @@ export const Findings: React.FC = () => {
   };
 
   const severityColor = (sev: string) => {
-    switch (sev.upperCase?() || sev) {
+    switch ((sev || '').toUpperCase()) {
       case 'CRITICAL': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
       case 'HIGH': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
       case 'MEDIUM': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
