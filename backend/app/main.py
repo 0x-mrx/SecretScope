@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -34,7 +34,7 @@ app.add_middleware(
 # Base healthcheck
 @app.get("/health")
 @limiter.limit("5/minute")
-def health_check():
+def health_check(request: Request):
     return {"status": "healthy", "service": settings.PROJECT_NAME}
 
 # API Routing
